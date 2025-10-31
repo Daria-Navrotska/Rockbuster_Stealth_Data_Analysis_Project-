@@ -1,0 +1,85 @@
+# Query to find the average amount paid by the top 5 customers
+SELECT AVG (total_amount_paid.total_payment) AS avg_amount_paid
+   FROM 
+		(SELECT cust.customer_id,
+		       cust.first_name,
+		       cust.last_name,
+		       ctry.country,
+		       cit.city,
+		       SUM(pay.amount) AS total_payment
+		FROM customer AS cust
+		     INNER JOIN payment AS pay ON pay.customer_id = cust.customer_id
+		     INNER JOIN address AS addr ON cust.address_id = addr.address_id
+		     INNER JOIN city AS cit ON addr.city_id = cit.city_id
+		     INNER JOIN country AS ctry ON cit.country_id = ctry.country_id
+		WHERE cit.city IN ('Aurora', 'Atlixco', 'Xintai', 'Adoni', 'Dhule (Dhulia)', 'Kurashiki', 'Pingxiang', 'Sivas', 'Celaya', 'So Leopoldo')
+		AND ctry.country IN ('India', 'China', 'United States', 'Japan', 'Mexico', 'Brazil', 'Russian Federation', 'Philippines', 'Turkey', 'Indonesia')
+		GROUP BY cust.customer_id, cust.first_name, cust.last_name, cit.city, ctry.country
+		ORDER BY SUM(pay.amount) DESC
+		LIMIT 5) AS total_amount_paid;
+
+
+
+# Query to find out how many of the top 5 customers identified in previous query are based within each country
+-- Select the country name
+SELECT couA.country,
+
+       -- Count all unique customers from each country
+       COUNT(DISTINCT custA.customer_id) AS all_customer_count,
+
+       -- Count how many of the top 5 paying customers live in each country
+       COUNT(DISTINCT top_five_customers.customer_id) AS top_customer_count
+
+-- Start from the customer table
+FROM customer AS custA
+
+-- Join to get address details
+INNER JOIN address AS addrA ON custA.address_id = addrA.address_id
+
+-- Join to get city details
+INNER JOIN city AS citA ON addrA.city_id = citA.city_id
+
+-- Join to get country details
+INNER JOIN country AS couA ON citA.country_id = couA.country_id
+
+-- LEFT JOIN with a subquery that identifies the top 5 paying customers
+LEFT JOIN (
+    SELECT 
+        cust.customer_id,
+        cust.first_name,
+        cust.last_name,
+        ctry.country,
+        cit.city,
+        SUM(pay.amount) AS total_payment
+    FROM customer AS cust
+    INNER JOIN payment AS pay ON pay.customer_id = cust.customer_id
+    INNER JOIN address AS addr ON cust.address_id = addr.address_id
+    INNER JOIN city AS cit ON addr.city_id = cit.city_id
+    INNER JOIN country AS ctry ON cit.country_id = ctry.country_id
+
+    -- Filter to include only customers from specific cities and countries
+    WHERE cit.city IN ('Aurora', 'Atlixco', 'Xintai', 'Adoni', 'Dhule (Dhulia)', 
+                       'Kurashiki', 'Pingxiang', 'Sivas', 'Celaya', 'So Leopoldo')
+      AND ctry.country IN ('India', 'China', 'United States', 'Japan', 'Mexico', 
+                           'Brazil', 'Russian Federation', 'Philippines', 'Turkey', 'Indonesia')
+
+    -- Group by customer and location to calculate total payments
+    GROUP BY cust.customer_id, cust.first_name, cust.last_name, cit.city, ctry.country
+
+    -- Sort by total payment amount in descending order
+    ORDER BY SUM(pay.amount) DESC
+
+    -- Limit to the top 5 paying customers
+    LIMIT 5) 
+
+AS top_five_customers ON top_five_customers.country = couA.country
+-- Group the final results by country
+GROUP BY couA.country
+-- Sort by number of top customers first, then total customers
+ORDER BY top_customer_count DESC, all_customer_count DESC
+-- Limit to the top 5 countries in the final output
+LIMIT 5;
+
+
+
+
