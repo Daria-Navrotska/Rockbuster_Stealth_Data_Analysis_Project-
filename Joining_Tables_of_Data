@@ -1,0 +1,69 @@
+# Query to find the top 10 countries for Rockbuster in terms of customer numbers
+SELECT country,
+COUNT (customer_id) AS customer_numbers
+FROM customer AS cust
+	INNER JOIN address AS addr ON cust.address_id = addr.address_id
+	INNER JOIN city AS cit ON addr.city_id = cit.city_id
+	INNER JOIN country AS coun ON cit.country_id = coun.country_id
+GROUP BY country
+ORDER BY COUNT (customer_id) DESC
+LIMIT 10;
+
+
+# Query to identify the top 10 cities that fall within the top 10 countries identified in previous query
+-- Select the city name and count of customers in each city
+SELECT city,
+       COUNT (customer_id) AS customer_count
+FROM customer AS cust
+     -- Join with address to get location details
+     INNER JOIN address AS addr ON cust.address_id = addr.address_id
+     -- Join with city to get city names
+     INNER JOIN city AS cit ON addr.city_id = cit.city_id
+     -- Join with country to filter by top countries
+     INNER JOIN country AS coun ON cit.country_id = coun.country_id
+-- Filter to include only cities from the top 10 countries by customer count
+WHERE coun.country IN ('India', 'China', 'United States', 
+'Japan','Mexico', 'Brazil', 'Russian Federation', 'Philippines', 
+'Turkey', 'Indonesia')
+-- Group by city to count customers per city
+GROUP BY city, country
+-- Order by customer count in descending order to get top cities
+ORDER BY COUNT(cust.customer_id) DESC
+-- Limit to top 10 cities
+LIMIT 10;
+
+
+# Query to find the top 5 customers from the top 10 cities who’ve paid the highest total amounts to Rockbuster
+-- Select customer details and total amount paid
+SELECT cust.customer_id,
+       cust.first_name,
+       cust.last_name,
+       ctry.country,
+       cit.city,
+       SUM(pay.amount) AS total_payment
+FROM customer AS cust
+     
+     -- Join with payment table to get transaction amounts
+     INNER JOIN payment AS pay ON pay.customer_id = cust.customer_id
+     -- Join with address table to get location info
+     INNER JOIN address AS addr ON cust.address_id = addr.address_id
+     -- Join with city table to get city names
+     INNER JOIN city AS cit ON addr.city_id = cit.city_id
+     -- Join with country table to get country names
+     INNER JOIN country AS ctry ON cit.country_id = ctry.country_id
+
+-- Filter to include only customers from the top 10 cities
+WHERE cit.city IN ('Aurora', 'Atlixco', 'Xintai', 'Adoni', 'Dhule (Dhulia)', 'Kurashiki', 'Pingxiang', 'Sivas', 'Celaya', 'So Leopoldo')
+
+-- Filter to include only customers from the top 10 countries
+AND ctry.country IN ('India', 'China', 'United States', 'Japan', 'Mexico', 'Brazil', 'Russian Federation', 'Philippines', 'Turkey', 'Indonesia')
+
+-- Group by customer and location to calculate total payments
+GROUP BY cust.customer_id, cust.first_name, cust.last_name, cit.city, ctry.country
+
+-- Sort by total amount paid in descending order
+ORDER BY total_payment DESC
+
+-- Limit to top 5 customers
+LIMIT 5;
+
