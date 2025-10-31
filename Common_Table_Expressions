@@ -1,0 +1,69 @@
+# Query to find an average amount paid by the top 5 customers
+This SQL query uses a Common Table Expression (CTE) to isolate the top 5 customers based on total payments from selected cities and countries. 
+By defining the CTE first, the query becomes more readable and modular, allowing the final SELECT to simply calculate the average payment among 
+those top customers. This structure makes complex logic easier to manage and extend.
+
+WITH top_customers AS 
+    (SELECT 
+        cust.customer_id,
+        cust.first_name,
+        cust.last_name,
+        ctry.country,
+        cit.city,
+        SUM (pay.amount) AS total_payment
+    FROM customer AS cust
+    INNER JOIN payment AS pay ON pay.customer_id = cust.customer_id
+    INNER JOIN address AS addr ON cust.address_id = addr.address_id
+    INNER JOIN city AS cit ON addr.city_id = cit.city_id
+    INNER JOIN country AS ctry ON cit.country_id = ctry.country_id
+    WHERE cit.city IN ('Aurora', 'Atlixco', 'Xintai', 'Adoni', 'Dhule (Dhulia)', 'Kurashiki', 'Pingxiang', 'Sivas', 'Celaya', 'So Leopoldo')
+      AND ctry.country IN ('India', 'China', 'United States', 'Japan', 'Mexico', 'Brazil', 'Russian Federation', 'Philippines', 'Turkey', 'Indonesia')
+    GROUP BY cust.customer_id, cust.first_name, cust.last_name, cit.city, ctry.country
+    ORDER BY total_payment DESC
+    LIMIT 5)
+
+SELECT AVG (top_customers.total_payment) AS avg_amount_paid
+FROM top_customers;
+
+
+# Query to find out how many of the top 5 customers you identified in previous query are based within each country
+This code uses a Common Table Expression (CTE) to first identify the top 5 paying customers from selected cities and countries. It then joins that CTE with the 
+full customer dataset to count how many of those top customers live in each country, alongside the total number of customers per country. The final result shows the 
+top 5 countries ranked by presence of high-paying customers.
+
+-- CTE to identify the top 5 paying customers
+WITH top_five_customers AS (
+    SELECT 
+        cust.customer_id,
+        cust.first_name,
+        cust.last_name,
+        ctry.country,
+        cit.city,
+        SUM(pay.amount) AS total_payment
+    FROM customer AS cust
+    INNER JOIN payment AS pay ON pay.customer_id = cust.customer_id
+    INNER JOIN address AS addr ON cust.address_id = addr.address_id
+    INNER JOIN city AS cit ON addr.city_id = cit.city_id
+    INNER JOIN country AS ctry ON cit.country_id = ctry.country_id
+    WHERE cit.city IN ('Aurora', 'Atlixco', 'Xintai', 'Adoni', 'Dhule (Dhulia)', 
+                       'Kurashiki', 'Pingxiang', 'Sivas', 'Celaya', 'So Leopoldo')
+      AND ctry.country IN ('India', 'China', 'United States', 'Japan', 'Mexico', 
+                           'Brazil', 'Russian Federation', 'Philippines', 'Turkey', 'Indonesia')
+    GROUP BY cust.customer_id, cust.first_name, cust.last_name, cit.city, ctry.country
+    ORDER BY total_payment DESC
+    LIMIT 5)
+
+-- CTE in the main query
+SELECT 
+    couA.country,
+    COUNT(DISTINCT custA.customer_id) AS all_customer_count,
+    COUNT(DISTINCT top_five_customers.customer_id) AS top_customer_count
+FROM customer AS custA
+INNER JOIN address AS addrA ON custA.address_id = addrA.address_id
+INNER JOIN city AS citA ON addrA.city_id = citA.city_id
+INNER JOIN country AS couA ON citA.country_id = couA.country_id
+LEFT JOIN top_five_customers ON top_five_customers.country = couA.country
+GROUP BY couA.country
+ORDER BY top_customer_count DESC, all_customer_count DESC
+LIMIT 5;
+
